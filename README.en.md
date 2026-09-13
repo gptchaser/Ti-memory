@@ -19,6 +19,10 @@ Ti-memory turns this process into a memory system: **independent memory blocks, 
 - **Anti-bloating**: if a new fragment's keywords are fully covered by one block, it is absorbed only into the strongest block — no redundant merging. Merging happens only for fragments that genuinely bridge multiple blocks.
 - **Forgetting**: block strength decays over time (30-day half-life by default) and is reinforced by retrieval/access (use it or lose it); very weak blocks can be archived with `prune` (archived, never deleted, fully traceable).
 
+## Live Demo
+
+Open the [Ti-memory showcase page](https://gptchaser.github.io/Ti-memory/) to try it online: the interactive demo simulates absorption, merging and path detection in the browser, behaving the same as the Python engine. Page source lives in `docs/`.
+
 ## Quick Start
 
 Requirements: Python 3.9+
@@ -65,6 +69,7 @@ Ti-memory/
 │   └── system.py        #   MemorySystem facade
 ├── cli.py               # Command-line entry
 ├── demo.py              # Scenario demo
+├── docs/                # Showcase page source (GitHub Pages)
 ├── tests/               # Unit tests
 └── README.en.md         # This file (English)
 ```

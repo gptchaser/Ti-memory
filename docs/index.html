@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ti-memory · 片段记忆 · 融会贯通</title>
+<meta name="description" content="受人类记忆片段性启发、面向 LLM 的片段式记忆系统：独立记忆块、关键词检索、吸收式融会贯通、遗忘淡出。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230e1b2e'/%3E%3Ccircle cx='9' cy='16' r='4' fill='%232563eb'/%3E%3Ccircle cx='23' cy='16' r='4' fill='%232563eb'/%3E%3Cline x1='13' y1='16' x2='19' y2='16' stroke='%23f59e0b' stroke-width='2.5'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap">
+<style>
+:root{
+  --ink:#0e1b2e;
+  --ink-2:#1e293b;
+  --paper:#f7f8fa;
+  --card:#ffffff;
+  --line:#e2e8f0;
+  --text:#334155;
+  --text-2:#64748b;
+  --blue:#2563eb;
+  --blue-soft:#eff6ff;
+  --green:#16a34a;
+  --green-soft:#f0fdf4;
+  --orange:#f59e0b;
+  --orange-soft:#fffbeb;
+  --radius:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;color:var(--text);background:var(--paper);line-height:1.7;-webkit-font-smoothing:antialiased}
+code,pre{font-family:"Cascadia Code","JetBrains Mono",ui-monospace,Consolas,monospace}
+a{color:var(--blue);text-decoration:none}
+a:hover{text-decoration:underline}
+button{font-family:inherit;cursor:pointer}
+svg text{font-family:inherit}
+
+/* ===== 导航 ===== */
+nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.nav-inner{max-width:1120px;margin:0 auto;padding:0 24px;height:58px;display:flex;align-items:center;gap:28px}
+.nav-brand{display:flex;align-items:center;gap:9px;font-weight:700;color:var(--ink);font-size:15px}
+.nav-brand svg{display:block}
+.nav-links{display:flex;gap:20px;margin-left:auto}
+.nav-links a{color:var(--text-2);font-size:14px}
+.nav-links a:hover{color:var(--ink);text-decoration:none}
+
+/* ===== Hero ===== */
+.hero{background:var(--ink);color:#e2e8f0;position:relative;overflow:hidden}
+.hero-inner{max-width:1120px;margin:0 auto;padding:88px 24px 96px;display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:#93c5fd;border:1px solid rgba(147,197,253,.35);border-radius:999px;padding:5px 14px;margin-bottom:22px}
+.hero-eyebrow .dot{width:7px;height:7px;border-radius:50%;background:#60a5fa}
+.hero h1{font-size:44px;line-height:1.25;font-weight:900;color:#fff;letter-spacing:.5px}
+.hero h1 .accent{color:#fbbf24}
+.hero .sub{margin-top:18px;font-size:16px;color:#94a3b8;max-width:520px}
+.hero .cta{margin-top:30px;display:flex;gap:14px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:8px;border-radius:10px;font-size:15px;font-weight:600;padding:11px 22px;cursor:pointer;border:1px solid transparent;transition:transform .12s ease,box-shadow .12s ease,background .12s ease}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-primary:hover{background:#1d4ed8}
+.btn-ghost{border-color:rgba(148,163,184,.5);color:#cbd5e1;background:transparent}
+.btn-ghost:hover{border-color:#94a3b8;color:#fff}
+.hero-stats{margin-top:34px;display:flex;gap:36px;border-top:1px solid rgba(148,163,184,.2);padding-top:22px}
+.hero-stats .num{font-size:26px;font-weight:700;color:#fff;font-family:"Cascadia Code",ui-monospace,monospace}
+.hero-stats .lbl{font-size:12px;color:#94a3b8;margin-top:2px}
+
+/* hero 网络动画 */
+.hero-net{background:rgba(255,255,255,.03);border:1px solid rgba(148,163,184,.18);border-radius:18px;padding:18px}
+.hero-net svg{width:100%;height:auto;display:block}
+.net-node{fill:#1e293b;stroke:#475569;stroke-width:1.5;transition:fill .3s}
+.net-node.on{fill:#2563eb;stroke:#3b82f6}
+.net-label{fill:#e2e8f0;font-size:15px;font-weight:700;text-anchor:middle;font-family:inherit}
+.net-edge{stroke:#3b82f6;stroke-width:2.5;stroke-dasharray:220;stroke-dashoffset:220;animation:draw .9s ease forwards}
+.net-edge.dim{stroke:#334155}
+.net-chain{stroke:#22c55e;stroke-width:4;stroke-dasharray:220;stroke-dashoffset:220;stroke-linecap:round;opacity:.9;animation:draw 1.1s ease .9s forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.net-pulse{animation:pulse 2.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}
+.net-note{fill:#94a3b8;font-size:12.5px;text-anchor:middle;font-family:inherit}
+
+/* ===== 章节通用 ===== */
+section{padding:84px 0}
+.section-inner{max-width:1120px;margin:0 auto;padding:0 24px}
+.sec-head{margin-bottom:44px;max-width:680px}
+.sec-kicker{display:inline-block;font-size:13px;font-weight:700;color:var(--blue);letter-spacing:2px;margin-bottom:12px}
+.sec-head h2{font-size:32px;font-weight:900;color:var(--ink);line-height:1.3}
+.sec-head p{margin-top:12px;font-size:15.5px;color:var(--text-2)}
+
+/* ===== 灵感故事 ===== */
+#inspiration{background:var(--card)}
+.story-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.story-card{border:1px solid var(--line);border-radius:var(--radius);padding:26px 24px 22px;background:#fbfcfe;display:flex;flex-direction:column;gap:12px}
+.story-card .step{font-size:12.5px;font-weight:700;color:var(--text-2)}
+.story-card .step em{font-style:normal;color:var(--blue)}
+.story-card h3{font-size:17px;font-weight:700;color:var(--ink)}
+.story-card p{font-size:14.5px;color:var(--text-2)}
+.story-card svg{width:100%;height:auto;margin-top:4px;display:block}
+.story-tagline{margin-top:34px;background:var(--blue-soft);border-left:3px solid var(--blue);border-radius:0 10px 10px 0;padding:18px 22px;font-size:15px;color:#1e3a8a}
+.story-tagline b{color:#1d4ed8}
+
+/* ===== 机制 ===== */
+#mechanism{background:var(--paper)}
+.mech-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.mech-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:24px 22px;transition:transform .15s ease,border-color .15s ease}
+.mech-card:hover{transform:translateY(-3px);border-color:#bfdbfe}
+.mech-card .ico{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:16px}
+.mech-card .ico svg{width:21px;height:21px}
+.mech-card h3{font-size:16px;font-weight:700;color:var(--ink);margin-bottom:8px}
+.mech-card p{font-size:14px;color:var(--text-2)}
+.ico-blue{background:var(--blue-soft);color:var(--blue)}
+.ico-green{background:var(--green-soft);color:var(--green)}
+.ico-orange{background:var(--orange-soft);color:var(--orange)}
+
+/* ===== 交互演示 ===== */
+#demo{background:var(--ink)}
+#demo .sec-kicker{color:#60a5fa}
+#demo .sec-head h2{color:#fff}
+#demo .sec-head p{color:#94a3b8}
+.demo-layout{display:grid;grid-template-columns:330px 1fr;gap:22px;align-items:start}
+.demo-controls{background:rgba(255,255,255,.04);border:1px solid rgba(148,163,184,.2);border-radius:16px;padding:20px}
+.demo-controls h3{color:#e2e8f0;font-size:13px;font-weight:700;letter-spacing:1px;margin:18px 0 10px}
+.demo-controls h3:first-child{margin-top:0}
+.presets{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid rgba(147,197,253,.45);color:#bfdbfe;background:rgba(37,99,235,.12);border-radius:999px;padding:6px 13px;font-size:13px;cursor:pointer;transition:background .12s,border-color .12s}
+.chip:hover{background:rgba(37,99,235,.25);border-color:#93c5fd}
+.demo-controls textarea,.demo-controls input{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(148,163,184,.35);border-radius:9px;color:#e2e8f0;padding:10px 12px;font-size:15px;font-family:inherit;resize:vertical}
+.demo-controls textarea{min-height:64px}
+.demo-controls textarea::placeholder,.demo-controls input::placeholder{color:#64748b}
+.demo-controls textarea:focus,.demo-controls input:focus{outline:none;border-color:#60a5fa}
+.demo-actions{display:flex;gap:9px;margin-top:12px;flex-wrap:wrap}
+.demo-actions .btn{padding:9px 16px;font-size:13.5px}
+.btn-sm-primary{background:var(--blue);color:#fff}
+.btn-sm-primary:hover{background:#1d4ed8}
+.btn-sm-ghost{border-color:rgba(148,163,184,.5);color:#cbd5e1;background:transparent}
+.btn-sm-ghost:hover{border-color:#94a3b8;color:#fff}
+.search-row{display:flex;gap:8px}
+.search-row input{flex:1}
+.demo-stage{display:flex;flex-direction:column;gap:14px;min-width:0}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.stat-box{background:rgba(255,255,255,.04);border:1px solid rgba(148,163,184,.2);border-radius:12px;padding:14px 18px}
+.stat-box .num{font-size:26px;font-weight:700;color:#fff;font-family:"Cascadia Code",ui-monospace,monospace}
+.stat-box .num small{font-size:14px;color:#64748b;font-weight:400}
+.stat-box .lbl{font-size:12px;color:#94a3b8;margin-top:2px}
+.graph-wrap{background:rgba(255,255,255,.03);border:1px solid rgba(148,163,184,.2);border-radius:16px;padding:14px;overflow-x:auto}
+#memGraph{display:block;width:100%;height:auto}
+.g-empty{fill:#64748b;font-size:14px;text-anchor:middle}
+.g-block rect{fill:#0f2438;stroke:#2b3f57;stroke-width:1.5;rx:14}
+.g-block:hover rect{stroke:#3b82f6}
+.g-label{fill:#e2e8f0;font-size:12.5px;font-weight:700}
+.g-kws{fill:#7d93ad;font-size:11px}
+.g-node{fill:#1e293b;stroke:#475569;stroke-width:1.5}
+.g-node.hit{fill:#f59e0b;stroke:#fbbf24}
+.g-node.new{fill:#2563eb;stroke:#3b82f6}
+.g-edge{stroke:#3b82f6;stroke-width:2.2}
+.g-chain{stroke:#22c55e;stroke-width:3.5;stroke-dasharray:7,4;fill:none;opacity:.9}
+.g-chain-lbl{fill:#4ade80;font-size:12px;font-weight:700}
+.g-nodelbl{fill:#fff;font-size:12px;font-weight:700;text-anchor:middle}
+.g-flash{animation:gflash 1.1s ease}
+@keyframes gflash{0%{opacity:0}18%{opacity:1}100%{opacity:1}}
+.detail{background:rgba(255,255,255,.04);border:1px solid rgba(148,163,184,.2);border-radius:14px;padding:16px 18px;display:none}
+.detail.show{display:block}
+.detail h4{color:#e2e8f0;font-size:13.5px;font-weight:700;margin-bottom:8px;display:flex;gap:8px;align-items:center}
+.detail .desc{color:#cbd5e1;font-size:13.5px;white-space:pre-wrap;border-left:2px solid #3b82f6;padding-left:12px}
+.detail .src{margin-top:12px}
+.detail .src-item{font-size:12.5px;color:#7d93ad;padding:3px 0;display:flex;gap:8px}
+.detail .src-item .s{color:#94a3b8;flex:1}
+.detail .hint{font-size:12px;color:#4ade80;margin-top:10px}
+.log{list-style:none;max-height:190px;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
+.log li{font-size:12.5px;color:#94a3b8;display:flex;gap:8px;align-items:baseline}
+.log .tag{flex:none;border-radius:5px;padding:1px 8px;font-size:11.5px;font-weight:700;color:#0f2438}
+.tag-new{background:#93c5fd}
+.tag-absorb{background:#fcd34d}
+.tag-merge{background:#86efac}
+.tag-chain{background:#4ade80}
+.log .t{color:#e2e8f0;flex:1}
+
+/* ===== 快速开始 ===== */
+#quickstart{background:var(--card)}
+.qs-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:26px}
+.qs-card{border:1px solid var(--line);border-radius:var(--radius);padding:24px;background:#fbfcfe}
+.qs-card h3{font-size:16px;font-weight:700;color:var(--ink);margin-bottom:14px;display:flex;align-items:center;gap:9px}
+.qs-card h3 svg{width:18px;height:18px;color:var(--blue)}
+pre.code{background:var(--ink);color:#cbd5e1;border-radius:10px;padding:16px 18px;font-size:13px;line-height:1.65;overflow-x:auto}
+pre.code .c{color:#64748b}
+pre.code .k{color:#93c5fd}
+.tree{font-size:13px;line-height:1.8;color:var(--text-2);white-space:pre;overflow-x:auto}
+.tree b{color:var(--ink);font-weight:600}
+
+/* ===== Footer ===== */
+footer{background:var(--ink);color:#64748b;padding:40px 24px;font-size:13px}
+.footer-inner{max-width:1120px;margin:0 auto;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+footer a{color:#94a3b8}
+footer a:hover{color:#fff}
+
+/* ===== 响应式 ===== */
+@media (max-width:960px){
+  .hero-inner{grid-template-columns:1fr;padding:64px 24px 72px}
+  .hero h1{font-size:34px}
+  .story-grid{grid-template-columns:1fr}
+  .mech-grid{grid-template-columns:1fr 1fr}
+  .demo-layout{grid-template-columns:1fr}
+  .qs-grid{grid-template-columns:1fr}
+}
+@media (max-width:600px){
+  .nav-links{display:none}
+  .mech-grid{grid-template-columns:1fr}
+  .hero-stats{gap:24px}
+  .sec-head h2{font-size:26px}
+  body{font-size:16px}
+  .chip{min-height:44px;padding:10px 16px}
+  .btn{min-height:44px}
+  .demo-controls textarea,.demo-controls input{font-size:16px}
+  .demo-controls textarea{min-height:80px}
+}
+@media (prefers-reduced-motion:reduce){
+  .net-edge,.net-chain{animation:none;stroke-dashoffset:0}
+  .net-pulse{animation:none}
+  html{scroll-behavior:auto}
+}
+</style>
+</head>
+<body>
+
+<!-- ===== 导航 ===== -->
+<nav>
+  <div class="nav-inner">
+    <span class="nav-brand">
+      <svg width="24" height="24" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#0e1b2e"/><circle cx="9" cy="16" r="4" fill="#2563eb"/><circle cx="23" cy="16" r="4" fill="#2563eb"/><line x1="13" y1="16" x2="19" y2="16" stroke="#f59e0b" stroke-width="2.5"/></svg>
+      Ti-memory
+    </span>
+    <div class="nav-links">
+      <a href="#inspiration">灵感</a>
+      <a href="#mechanism">机制</a>
+      <a href="#demo">交互演示</a>
+      <a href="#quickstart">快速开始</a>
+      <a href="https://github.com/gptchaser/Ti-memory" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ===== Hero ===== -->
+<header class="hero">
+  <div class="hero-inner">
+    <div>
+      <span class="hero-eyebrow"><span class="dot"></span>片段记忆引擎 · Fragment Memory Engine</span>
+      <h1>记忆是片段，<br><span class="accent">融会贯通</span>才成路</h1>
+      <p class="sub">你记住了 A→B，也记住了 C→B，两条路都经过 B——但它们是两件互不相干的事。直到某天你意识到 A→B→C 是一条完整的通路。Ti-memory 把这个过程做成一套面向 LLM 的记忆系统。</p>
+      <div class="cta">
+        <a class="btn btn-primary" href="#demo">开始现场演示</a>
+        <a class="btn btn-ghost" href="https://github.com/gptchaser/Ti-memory" target="_blank" rel="noopener">查看 GitHub 仓库</a>
+      </div>
+      <div class="hero-stats">
+        <div><div class="num">块</div><div class="lbl">独立记忆块</div></div>
+        <div><div class="num">吸收</div><div class="lbl">片段融入块中</div></div>
+        <div><div class="num">通路</div><div class="lbl">自动识别 A→B→C</div></div>
+      </div>
+    </div>
+    <div class="hero-net" aria-hidden="true">
+      <svg viewBox="0 0 520 380">
+        <!-- 片段边 -->
+        <line class="net-edge" x1="86" y1="196" x2="222" y2="140" style="animation-delay:.2s"/>
+        <line class="net-edge" x1="306" y1="240" x2="222" y2="140" style="animation-delay:.45s"/>
+        <!-- 融会贯通链 -->
+        <polyline class="net-chain" points="86,196 222,140 306,240 432,176"/>
+        <!-- 节点 -->
+        <g class="net-pulse" style="animation-delay:.9s">
+          <circle class="net-node on" cx="86" cy="196" r="22"/>
+          <text class="net-label" x="86" y="202">A</text>
+        </g>
+        <g class="net-pulse" style="animation-delay:1.15s">
+          <circle class="net-node on" cx="222" cy="140" r="22"/>
+          <text class="net-label" x="222" y="146">B</text>
+        </g>
+        <g class="net-pulse" style="animation-delay:1.4s">
+          <circle class="net-node" cx="306" cy="240" r="22"/>
+          <text class="net-label" x="306" y="246">C</text>
+        </g>
+        <g class="net-pulse" style="animation-delay:1.65s">
+          <circle class="net-node" cx="432" cy="176" r="22"/>
+          <text class="net-label" x="432" y="182">D</text>
+        </g>
+        <text class="net-note" x="260" y="330">A→B 与 C→B 独立存储 · 共享锚点 B · 融会贯通为 A→B→C→D</text>
+      </svg>
+    </div>
+  </div>
+</header>
+
+<main>
+<!-- ===== 灵感 ===== -->
+<section id="inspiration">
+  <div class="section-inner">
+    <div class="sec-head">
+      <span class="sec-kicker">INSPIRATION</span>
+      <h2>灵感来自一段真实的顿悟</h2>
+      <p>有一天你发现，脑海里两条互不相干的路，其实是同一条。</p>
+    </div>
+    <div class="story-grid">
+      <div class="story-card">
+        <div class="step">第 1 步 · 独立片段</div>
+        <h3>两条路都经过 B，却互不知晓</h3>
+        <p>你走过 A→B，也走过 C→B。B 是同一个 B，但在你的印象里，它们是两件完全不同的事。</p>
+        <svg viewBox="0 0 320 120" aria-hidden="true">
+          <line x1="40" y1="78" x2="150" y2="48" stroke="#3b82f6" stroke-width="2.5"/>
+          <line x1="240" y1="84" x2="150" y2="48" stroke="#94a3b8" stroke-width="2.5" stroke-dasharray="5,4"/>
+          <circle cx="40" cy="78" r="15" fill="#1e293b"/><text x="40" y="84" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">A</text>
+          <circle cx="150" cy="48" r="15" fill="#1e293b"/><text x="150" y="54" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">B</text>
+          <circle cx="240" cy="84" r="15" fill="#1e293b"/><text x="240" y="90" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">C</text>
+        </svg>
+      </div>
+      <div class="story-card">
+        <div class="step">第 2 步 · 交汇点</div>
+        <h3>系统发现共享锚点 B</h3>
+        <p>两条片段都带着锚点 B。Ti-memory 据此判定它们彼此关联，把 C→B 吸收进 A→B 所在的记忆块。</p>
+        <svg viewBox="0 0 320 120" aria-hidden="true">
+          <line x1="40" y1="78" x2="150" y2="48" stroke="#3b82f6" stroke-width="2.5"/>
+          <line x1="240" y1="84" x2="150" y2="48" stroke="#3b82f6" stroke-width="2.5"/>
+          <circle cx="40" cy="78" r="15" fill="#1e293b"/><text x="40" y="84" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">A</text>
+          <circle cx="150" cy="48" r="15" fill="#f59e0b"/><text x="150" y="54" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">B</text>
+          <circle cx="240" cy="84" r="15" fill="#1e293b"/><text x="240" y="90" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">C</text>
+        </svg>
+      </div>
+      <div class="story-card">
+        <div class="step">第 3 步 · 融会贯通</div>
+        <h3>A→B→C 连成一条通路</h3>
+        <p>系统识别出完整通路 A→B→C，生成整体描述；原来的 A→B 片段不再独立存在，只留作衰减中的溯源。</p>
+        <svg viewBox="0 0 320 120" aria-hidden="true">
+          <line x1="40" y1="78" x2="150" y2="48" stroke="#22c55e" stroke-width="3.5"/>
+          <line x1="240" y1="84" x2="150" y2="48" stroke="#22c55e" stroke-width="3.5"/>
+          <circle cx="40" cy="78" r="15" fill="#1e293b"/><text x="40" y="84" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">A</text>
+          <circle cx="150" cy="48" r="15" fill="#1e293b"/><text x="150" y="54" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">B</text>
+          <circle cx="240" cy="84" r="15" fill="#1e293b"/><text x="240" y="90" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">C</text>
+        </svg>
+      </div>
+    </div>
+    <div class="story-tagline">
+      <b>核心主张：</b>真正记会了 A→B→C，独立的 A→B 记忆就应当消失或淡出——记忆以"块"为单位存在，而不是无限并列的碎片。
+    </div>
+  </div>
+</section>
+
+<!-- ===== 机制 ===== -->
+<section id="mechanism">
+  <div class="section-inner">
+    <div class="sec-head">
+      <span class="sec-kicker">MECHANISM</span>
+      <h2>六个机制，模拟记忆的沉淀与遗忘</h2>
+      <p>全部逻辑可用纯 Python 复现，无第三方依赖；配置 LLM 后由大模型生成更自然的整体描述与关键词。</p>
+    </div>
+    <div class="mech-grid">
+      <div class="mech-card">
+        <div class="ico ico-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M3 9h18M9 21V9"/></svg></div>
+        <h3>记忆块</h3>
+        <p>记忆以"块"为单位独立存储：关键词作检索入口，块内保存融合后的整体描述。</p>
+      </div>
+      <div class="mech-card">
+        <div class="ico ico-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></div>
+        <h3>关键词检索</h3>
+        <p>检索命中关键词返回块概览；进入块内，才能看到完整描述与溯源片段。</p>
+      </div>
+      <div class="mech-card">
+        <div class="ico ico-orange"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 12h18M3 12l4-4M3 12l4 4M21 12l-4-4M21 12l-4 4"/></svg></div>
+        <h3>吸收式融会贯通</h3>
+        <p>新记忆共享关键词即被吸收进块；桥接多个块的片段，会把它们合并成更大的块。</p>
+      </div>
+      <div class="mech-card">
+        <div class="ico ico-orange"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3v6M12 15v6M3 12h6M15 12h6"/><circle cx="12" cy="12" r="3"/></svg></div>
+        <h3>片段淡出</h3>
+        <p>被吸收的片段不再作为独立记忆存在，只留作带衰减强度的溯源记录（30 天半衰期）。</p>
+      </div>
+      <div class="mech-card">
+        <div class="ico ico-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3l7 3v5c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg></div>
+        <h3>防止膨胀</h3>
+        <p>关键词被某块完全覆盖时只吸收进最强块，不盲目合并；块总数随片段增长极其缓慢。</p>
+      </div>
+      <div class="mech-card">
+        <div class="ico ico-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg></div>
+        <h3>遗忘与加强</h3>
+        <p>块强度随时间衰减，被检索/进入时加强（用进废退）；长期不用的弱块可归档清理。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 交互演示 ===== -->
+<section id="demo">
+  <div class="section-inner">
+    <div class="sec-head">
+      <span class="sec-kicker">LIVE DEMO</span>
+      <h2>交互演示：亲手添加记忆</h2>
+      <p>点击预设片段，或输入自己的记忆。观察系统如何吸收、合并、识别通路——右侧统计实时更新。</p>
+    </div>
+    <div class="demo-layout">
+      <div class="demo-controls">
+        <h3>预设片段</h3>
+        <div class="presets" id="presets"></div>
+        <h3>自由输入</h3>
+        <textarea id="inpContent" placeholder="例如：每天从家出发，沿滨江路走到公司。"></textarea>
+        <input id="inpKws" placeholder="关键词，逗号分隔（留空自动提取）">
+        <div class="demo-actions">
+          <button class="btn btn-sm-primary" id="btnAdd">添加记忆</button>
+          <button class="btn btn-sm-ghost" id="btnAuto">一键演示故事</button>
+          <button class="btn btn-sm-ghost" id="btnReset">重置</button>
+        </div>
+        <h3>关键词检索</h3>
+        <div class="search-row">
+          <input id="inpQuery" placeholder="输入关键词，如 B">
+          <button class="btn btn-sm-primary" id="btnQuery">检索</button>
+        </div>
+      </div>
+      <div class="demo-stage">
+        <div class="stats">
+          <div class="stat-box"><div class="num" id="stBlocks">0</div><div class="lbl">记忆块</div></div>
+          <div class="stat-box"><div class="num" id="stSources">0</div><div class="lbl">吸收片段</div></div>
+          <div class="stat-box"><div class="num" id="stChains">0</div><div class="lbl">融会贯通通路</div></div>
+        </div>
+        <div class="graph-wrap">
+          <svg id="memGraph" viewBox="0 0 760 380"></svg>
+        </div>
+        <div class="detail" id="detailPanel">
+          <h4 id="detailTitle">记忆块</h4>
+          <div class="desc" id="detailDesc"></div>
+          <div class="src" id="detailSrc"></div>
+          <div class="hint" id="detailHint"></div>
+        </div>
+        <ul class="log" id="eventLog"></ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 快速开始 ===== -->
+<section id="quickstart">
+  <div class="section-inner">
+    <div class="sec-head">
+      <span class="sec-kicker">QUICK START</span>
+      <h2>本地复现与命令行</h2>
+      <p>纯 Python 标准库实现，Python 3.9+ 即可运行；25 项核心逻辑由单元测试覆盖。</p>
+    </div>
+    <div class="qs-grid">
+      <div class="qs-card">
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 17l6-6-6-6M12 19h8"/></svg>运行演示</h3>
+        <pre class="code"><span class="c"># 跑完整场景：吸收、融会贯通、自动提取、遗忘</span>
+<span class="k">python</span> demo.py
+
+<span class="c"># 命令行：添加记忆（关键词可选）</span>
+<span class="k">python</span> cli.py add <span class="c">"每天早上骑车去公司"</span>
+<span class="k">python</span> cli.py add <span class="c">"从 A 走到 B"</span> --keywords A B
+<span class="k">python</span> cli.py stats
+<span class="k">python</span> cli.py query B
+<span class="k">python</span> cli.py prune --threshold 0.2
+
+<span class="c"># 单元测试</span>
+<span class="k">python</span> -m unittest discover -s tests -v</pre>
+      </div>
+      <div class="qs-card">
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z"/><path d="M4 9h16M4 15h16"/></svg>项目结构</h3>
+        <div class="tree"><b>Ti-memory/</b>
+├── <b>timemory/</b>           核心引擎
+│   ├── models.py         记忆块 / 溯源片段(衰减)
+│   ├── linking.py        关键词匹配与通路识别
+│   ├── extract.py        关键词自动提取
+│   ├── synthesis.py      吸收 / 合并 / 描述渲染
+│   ├── retrieval.py      关键词检索
+│   ├── graph.py          SVG 渲染
+│   ├── store.py          JSON 持久化
+│   └── system.py         MemorySystem 门面
+├── cli.py                命令行入口
+├── demo.py               场景演示
+├── tests/                单元测试
+└── docs/                 本站源码</div>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div>Ti-memory · 片段记忆 · 融会贯通 —— 面向 LLM 的片段式记忆系统</div>
+    <div><a href="https://github.com/gptchaser/Ti-memory" target="_blank" rel="noopener">github.com/gptchaser/Ti-memory</a> · 许可证待定</div>
+  </div>
+</footer>
+
+<script>
+/* ===== Ti-memory 交互演示：核心引擎（Python 实现的 JS 移植） ===== */
+(function(){
+"use strict";
+
+// ---------- 模型 ----------
+var blocks = [];
+var seq = 1;
+function bid(){ return 'b' + (seq++).toString(36); }
+function now(){ return Date.now(); }
+
+function norm(ks){
+  var seen = {}, out = [];
+  (ks || []).forEach(function(k){
+    k = String(k).trim();
+    if(k && !seen[k]){ seen[k] = 1; out.push(k); }
+  });
+  return out;
+}
+function pairs(ks){
+  var out = [];
+  for(var i = 0; i < ks.length - 1; i++){
+    var p = [ks[i], ks[i+1]].sort();
+    var dup = out.some(function(e){ return e[0] === p[0] && e[1] === p[1]; });
+    if(!dup) out.push(p);
+  }
+  return out;
+}
+function chainPath(keywords, edges){
+  var nodes = Array.from(new Set(keywords)).sort();
+  var adj = {};
+  nodes.forEach(function(n){ adj[n] = new Set(); });
+  edges.forEach(function(p){ adj[p[0]].add(p[1]); adj[p[1]].add(p[0]); });
+  var i;
+  for(i = 0; i < nodes.length; i++){ if(adj[nodes[i]].size > 2) return null; }
+  if(nodes.length === 1) return nodes;
+  var starts = nodes.filter(function(n){ return adj[n].size === 1; });
+  if(starts.length !== 2) return null;
+  var path = [], cur = starts[0], prev = null, nxt;
+  while(true){
+    path.push(cur);
+    nxt = Array.from(adj[cur]).find(function(n){ return n !== prev; });
+    if(nxt === undefined) break;
+    prev = cur; cur = nxt;
+  }
+  return path.length === nodes.length ? path : null;
+}
+function chainOf(b){ return b.sources.length >= 2 ? chainPath(b.keywords, b.links) : null; }
+
+function renderDesc(b){
+  var lines = b.sources.map(function(s, i){ return '[' + (i + 1) + '] ' + s.content; });
+  var chain = chainOf(b);
+  if(chain && chain.length >= 3) lines.push('融会贯通: ' + chain.join(' → '));
+  return lines.join('\n');
+}
+function createBlock(content, kws){
+  return { id: bid(), keywords: kws, content: '', sources: [{content: content, keywords: kws, strength: 1}], links: pairs(kws), strength: 1, updatedAt: now() };
+}
+function absorb(b, content, kws){
+  kws.forEach(function(k){ if(b.keywords.indexOf(k) === -1) b.keywords.push(k); });
+  pairs(kws).forEach(function(p){
+    var dup = b.links.some(function(e){ return e[0] === p[0] && e[1] === p[1]; });
+    if(!dup) b.links.push(p);
+  });
+  b.sources.push({content: content, keywords: kws, strength: 1});
+  b.content = renderDesc(b);
+  b.updatedAt = now();
+}
+function mergeBlocks(items){
+  var m = { id: bid(), keywords: [], content: '', sources: [], links: [], strength: 1, updatedAt: now() };
+  var seen = {};
+  items.forEach(function(b){
+    b.keywords.forEach(function(k){ if(!seen[k]){ seen[k] = 1; m.keywords.push(k); } });
+    b.links.forEach(function(p){
+      var dup = m.links.some(function(e){ return e[0] === p[0] && e[1] === p[1]; });
+      if(!dup) m.links.push(p.slice());
+    });
+    b.sources.forEach(function(s){ m.sources.push(s); });
+  });
+  m.content = renderDesc(m);
+  return m;
+}
+function matchBlocks(kws){
+  var s = {};
+  kws.forEach(function(k){ s[k] = 1; });
+  return blocks.filter(function(b){ return b.keywords.some(function(k){ return s[k]; }); });
+}
+function shared(b, kws){ return b.keywords.filter(function(k){ return kws.indexOf(k) > -1; }).length; }
+function bestBlock(matched, kws){
+  return matched.slice().sort(function(x, y){
+    var sx = shared(x, kws), sy = shared(y, kws);
+    if(sx !== sy) return sy - sx;
+    return (y.strength - x.strength) || (y.updatedAt - x.updatedAt);
+  })[0];
+}
+
+var flashSet = {};
+function addMemory(content, keywords){
+  var kws = norm(keywords || []);
+  var matched = matchBlocks(kws);
+  var block, action = '';
+  if(!matched.length){
+    block = createBlock(content, kws);
+    block.content = renderDesc(block);
+    blocks.push(block);
+    action = '新建';
+  } else if(matched.length === 1){
+    block = matched[0];
+    absorb(block, content, kws);
+    action = '吸收';
+  } else if(matched.some(function(b){ return kws.every(function(k){ return b.keywords.indexOf(k) > -1; }); })){
+    block = bestBlock(matched, kws);
+    absorb(block, content, kws);
+    action = '吸收进最强块';
+  } else {
+    var old = matched.slice();
+    block = mergeBlocks(old);
+    absorb(block, content, kws);
+    old.forEach(function(b){
+      var i = blocks.indexOf(b);
+      if(i > -1) blocks.splice(i, 1);
+    });
+    blocks.push(block);
+    action = '桥接合并';
+  }
+  kws.forEach(function(k){ flashSet[block.id + ':' + k] = 1; });
+  setTimeout(function(){ flashSet = {}; }, 1200);
+  logEvent(action, content, block);
+  var chain = chainOf(block);
+  if(chain && chain.length >= 3 && action !== '新建'){
+    logEvent('通路', chain.join(' → ') + ' 融会贯通成一条通路', block);
+  }
+  renderAll();
+  return block;
+}
+
+// ---------- 自动提取关键词 ----------
+var CJK_RE = /\p{Script=Han}{2,6}/gu;
+var EN_RE = /[A-Za-z][A-Za-z'\-]{2,}/g;
+var STOP = new Set(["the","and","for","are","but","not","you","all","any","can","was","one","our","out","day","get","has","him","his","how","new","now","old","see","two","way","who","that","with","have","this","will","your","from","into","them","then","they","were","when","what","about","every","some","more","than","been","just","also","over","would","could","一个","可以","就是","这个","那个","然后","自己","我们","你们","他们","什么","这样","那样","时候","地方","每天","大概","一直","到了","开始","因为","所以","但是","如果","还有","已经","现在","今天","明天","这里","那里"]);
+function autoKws(text, topN){
+  topN = topN || 5;
+  var score = {}, order = {}, idx = 0, m;
+  function add(c){
+    c = c.trim().toLowerCase();
+    if(c.length < 2 || STOP.has(c)) return;
+    score[c] = (score[c] || 0) + c.length;
+    if(!(c in order)) order[c] = idx++;
+  }
+  CJK_RE.lastIndex = 0;
+  while((m = CJK_RE.exec(text)) !== null){
+    var r = m[0];
+    add(r);
+    if(r.length > 2){ for(var i = 0; i < r.length - 1; i++) add(r.slice(i, i + 2)); }
+  }
+  EN_RE.lastIndex = 0;
+  while((m = EN_RE.exec(text)) !== null) add(m[0]);
+  return Object.keys(score).sort(function(a, b){ return (score[b] - score[a]) || (order[a] - order[b]); }).slice(0, topN);
+}
+
+// ---------- 渲染 ----------
+var NS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs, parent){
+  var e = document.createElementNS(NS, tag);
+  Object.keys(attrs || {}).forEach(function(k){ e.setAttribute(k, attrs[k]); });
+  if(parent) parent.appendChild(e);
+  return e;
+}
+var queryToken = null;
+
+function renderGraph(){
+  var svg = document.getElementById('memGraph');
+  var W = Math.max(760, blocks.length * 380);
+  svg.setAttribute('viewBox', '0 0 ' + W + ' 380');
+  svg.innerHTML = '';
+  if(!blocks.length){
+    var t = el('text', {x: W / 2, y: 190, 'text-anchor': 'middle', class: 'g-empty'}, svg);
+    t.textContent = '记忆为空 —— 从左侧添加一条片段开始';
+    return;
+  }
+  blocks.forEach(function(b, bi){
+    var g = el('g', {class: 'g-block', transform: 'translate(' + (bi * 380 + 10) + ',0)'}, svg);
+    var w = 360, cx = w / 2;
+    el('rect', {x: 0, y: 20, width: w, height: 320, fill: '#0f2438', stroke: '#2b3f57'}, g);
+    var idL = el('text', {x: cx, y: 46, 'text-anchor': 'middle', class: 'g-label'}, g);
+    idL.textContent = '块 ' + b.id;
+    var kwL = el('text', {x: cx, y: 64, 'text-anchor': 'middle', class: 'g-kws'}, g);
+    kwL.textContent = (b.keywords.length ? b.keywords.join(' · ') : '(无关键词)') + ' · ' + b.sources.length + ' 条片段';
+    var kws = Array.from(new Set(b.keywords));
+    var pos = {};
+    kws.forEach(function(k, i){
+      var ang = 2 * Math.PI * i / kws.length - Math.PI / 2;
+      pos[k] = [cx + 120 * Math.cos(ang), 195 + 95 * Math.sin(ang)];
+    });
+    b.links.forEach(function(p){
+      if(pos[p[0]] && pos[p[1]]){
+        el('line', {x1: pos[p[0]][0], y1: pos[p[0]][1], x2: pos[p[1]][0], y2: pos[p[1]][1], class: 'g-edge'}, g);
+      }
+    });
+    var chain = chainOf(b);
+    if(chain && chain.length >= 3){
+      var pts = chain.map(function(k){ return pos[k] ? pos[k].join(',') : null; }).filter(Boolean).join(' ');
+      el('polyline', {points: pts, class: 'g-chain'}, g);
+      var cl = el('text', {x: cx, y: 316, 'text-anchor': 'middle', class: 'g-chain-lbl'}, g);
+      cl.textContent = '融会贯通: ' + chain.join(' → ');
+    }
+    kws.forEach(function(k){
+      var x = pos[k][0], y = pos[k][1];
+      var hit = queryToken && b.keywords.indexOf(queryToken) > -1;
+      var c = el('circle', {cx: x, cy: y, r: 16, class: hit ? 'g-node hit' : 'g-node'}, g);
+      var t = el('text', {x: x, y: y + 4, 'text-anchor': 'middle', class: 'g-nodelbl'}, g);
+      t.textContent = k;
+      if(flashSet[b.id + ':' + k]){ c.classList.add('g-flash'); t.classList.add('g-flash'); }
+    });
+    g.addEventListener('click', function(){ showDetail(b); });
+  });
+}
+
+function renderStats(){
+  var fragments = blocks.reduce(function(s, b){ return s + b.sources.length; }, 0);
+  var chains = blocks.filter(function(b){ var c = chainOf(b); return c && c.length >= 3; }).length;
+  document.getElementById('stBlocks').textContent = blocks.length;
+  document.getElementById('stSources').textContent = fragments;
+  document.getElementById('stChains').textContent = chains;
+}
+function renderAll(){ renderGraph(); renderStats(); }
+
+// ---------- 日志 ----------
+var logColors = {'新建':'tag-new','吸收':'tag-absorb','吸收进最强块':'tag-absorb','桥接合并':'tag-merge','通路':'tag-chain','检索':'tag-new','提示':'tag-new','重置':'tag-new'};
+function logEvent(action, text, block){
+  var ul = document.getElementById('eventLog');
+  var li = document.createElement('li');
+  var tag = document.createElement('span');
+  tag.className = 'tag ' + (logColors[action] || 'tag-new');
+  tag.textContent = action;
+  var t = document.createElement('span');
+  t.className = 't';
+  t.textContent = text + (block && action !== '通路' ? '  →  块 ' + block.id : '');
+  li.appendChild(tag); li.appendChild(t);
+  ul.insertBefore(li, ul.firstChild);
+  while(ul.children.length > 30) ul.removeChild(ul.lastChild);
+}
+
+// ---------- 详情与加强 ----------
+function effectiveStrength(b){
+  var ageDays = Math.max(0, (now() - b.updatedAt) / 86400000);
+  return b.strength * Math.pow(0.5, ageDays / 30);
+}
+function showDetail(b){
+  b.strength = Math.min(1, b.strength + 0.25);
+  b.updatedAt = now();
+  var panel = document.getElementById('detailPanel');
+  panel.classList.add('show');
+  var title = document.getElementById('detailTitle');
+  title.textContent = '记忆块 ' + b.id + ' · 强度 ' + effectiveStrength(b).toFixed(2) + ' ';
+  var close = document.createElement('span');
+  close.textContent = '关闭';
+  close.style.cssText = 'margin-left:auto;font-size:12px;color:#7d93ad;cursor:pointer;font-weight:400';
+  close.addEventListener('click', function(){ panel.classList.remove('show'); });
+  title.appendChild(close);
+  document.getElementById('detailDesc').textContent = b.content || '(空)';
+  var srcEl = document.getElementById('detailSrc');
+  srcEl.innerHTML = '';
+  b.sources.forEach(function(s){
+    var d = document.createElement('div');
+    d.className = 'src-item';
+    var c = document.createElement('span');
+    c.className = 's';
+    c.textContent = s.content;
+    var w = document.createElement('span');
+    w.textContent = '强度 ' + (s.strength || 1).toFixed(2);
+    d.appendChild(c); d.appendChild(w);
+    srcEl.appendChild(d);
+  });
+  document.getElementById('detailHint').textContent = '打开记忆会加强它（+0.25，用进废退）。块内为整体描述，下方为已淡出的溯源片段。';
+  renderStats();
+}
+
+// ---------- 交互 ----------
+var PRESETS = [
+  {label:'A→B', content:'每天从 A 出发, 沿着河边小路走到 B。', kws:['A','B']},
+  {label:'C→B', content:'从 C 出发, 穿过山谷就能到 B。', kws:['C','B']},
+  {label:'C→D', content:'从 C 继续往 D 走, 翻过一座小山坡。', kws:['C','D']},
+  {label:'X→Y', content:'从 X 出发, 沿铁路走到 Y。', kws:['X','Y']},
+  {label:'B→X', content:'从 B 出发往 X 方向走, 路过一座桥。', kws:['B','X']},
+  {label:'关于B', content:'一次关于 B 的回忆: 在 B 遇见了老朋友。', kws:['B']}
+];
+function renderPresets(){
+  var wrap = document.getElementById('presets');
+  PRESETS.forEach(function(p){
+    var b = document.createElement('button');
+    b.className = 'chip';
+    b.textContent = p.label;
+    b.addEventListener('click', function(){ addMemory(p.content, p.kws); });
+    wrap.appendChild(b);
+  });
+}
+function addFromInput(){
+  var content = document.getElementById('inpContent').value.trim();
+  if(!content){ logEvent('提示', '先输入一段记忆内容'); return; }
+  var raw = document.getElementById('inpKws').value.trim();
+  var kws = raw ? raw.split(/[,，\s]+/).filter(Boolean) : autoKws(content);
+  addMemory(content, kws);
+  document.getElementById('inpContent').value = '';
+  document.getElementById('inpKws').value = '';
+}
+var autoRunning = false;
+function autoDemo(){
+  if(autoRunning) return;
+  autoRunning = true;
+  document.getElementById('btnAuto').disabled = true;
+  var steps = [
+    {content:'每天从 A 出发, 沿着河边小路走到 B。', kws:['A','B']},
+    {content:'从 C 出发, 穿过山谷就能到 B。', kws:['C','B']},
+    {content:'从 C 继续往 D 走, 翻过一座小山坡。', kws:['C','D']}
+  ];
+  var i = 0;
+  function tick(){
+    if(i >= steps.length){
+      autoRunning = false;
+      document.getElementById('btnAuto').disabled = false;
+      return;
+    }
+    addMemory(steps[i].content, steps[i].kws);
+    i++;
+    setTimeout(tick, 750);
+  }
+  tick();
+}
+function resetDemo(){
+  blocks.length = 0;
+  queryToken = null;
+  document.getElementById('eventLog').innerHTML = '';
+  document.getElementById('detailPanel').classList.remove('show');
+  document.getElementById('inpQuery').value = '';
+  renderAll();
+  logEvent('重置', '已清空全部记忆');
+}
+function doQuery(){
+  var val = document.getElementById('inpQuery').value.trim();
+  queryToken = val || null;
+  if(queryToken){
+    var hits = blocks.filter(function(b){ return b.keywords.indexOf(queryToken) > -1 || b.content.indexOf(queryToken) > -1; });
+    if(hits.length) logEvent('检索', '关键词「' + queryToken + '」命中 ' + hits.length + ' 个记忆块');
+    else logEvent('检索', '关键词「' + queryToken + '」无命中');
+  } else {
+    logEvent('提示', '输入关键词后点击检索');
+  }
+  renderGraph();
+}
+
+document.getElementById('btnAdd').addEventListener('click', addFromInput);
+document.getElementById('btnAuto').addEventListener('click', autoDemo);
+document.getElementById('btnReset').addEventListener('click', resetDemo);
+document.getElementById('btnQuery').addEventListener('click', doQuery);
+document.getElementById('inpQuery').addEventListener('keydown', function(e){ if(e.key === 'Enter') doQuery(); });
+renderPresets();
+renderAll();
+logEvent('提示', '从左侧预设片段开始，或输入自己的记忆');
+})();
+
+</script>
+</body>
+</html>

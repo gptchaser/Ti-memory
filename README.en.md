@@ -25,7 +25,7 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/<your-username>/Ti-memory.git
+git clone https://github.com/gptchaser/Ti-memory.git
 
 # Enter the directory
 cd Ti-memory

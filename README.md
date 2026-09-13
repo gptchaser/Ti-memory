@@ -25,7 +25,7 @@
 
 ```bash
 # 克隆仓库
-git clone https://github.com/<your-username>/Ti-memory.git
+git clone https://github.com/gptchaser/Ti-memory.git
 
 # 进入目录
 cd Ti-memory

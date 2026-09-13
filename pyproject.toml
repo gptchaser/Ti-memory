@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ti-memory"
+version = "0.1.0"
+description = "片段记忆 · 融会贯通 —— 面向 LLM 的片段式记忆系统"
+requires-python = ">=3.9"
+readme = "README.md"
+
+[tool.setuptools]
+packages = ["timemory"]

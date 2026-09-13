@@ -1,12 +1,17 @@
 # Dependencies
 node_modules/
 vendor/
+.venv/
 
 # Build outputs
 dist/
 build/
 *.pyc
 __pycache__/
+
+# Runtime data
+data/
+demo_output/
 
 # Logs
 *.log

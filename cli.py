@@ -1,10 +1,12 @@
 """Ti-memory 命令行入口.
 
 用法示例:
-  python cli.py add "每天从 A 走到 B" --keywords A B
+  python cli.py add "每天从 A 走到 B" --keywords A B   # 也可不传关键词, 自动提取
   python cli.py list
+  python cli.py stats
   python cli.py query B
   python cli.py get <block_id>
+  python cli.py prune --threshold 0.2
   python cli.py graph graph.svg
 """
 
@@ -31,15 +33,20 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_add = sub.add_parser("add", help="添加一条记忆片段(共享关键词则被吸收进已有块)")
     p_add.add_argument("content", help="记忆内容")
-    p_add.add_argument("--keywords", nargs="+", default=[], help="关键词列表(检索入口)")
+    p_add.add_argument("--keywords", nargs="+", default=None, help="关键词列表(不传则自动提取)")
 
     sub.add_parser("list", help="列出所有记忆块(概览)")
+    sub.add_parser("stats", help="记忆统计(块数 vs 片段总数)")
 
-    p_query = sub.add_parser("query", help="按关键词检索记忆块(返回概览)")
+    p_query = sub.add_parser("query", help="按关键词检索记忆块(返回概览与关联块)")
     p_query.add_argument("tokens", nargs="+", help="检索关键词")
 
     p_get = sub.add_parser("get", help="进入记忆块, 查看整体描述与溯源片段")
     p_get.add_argument("block_id", help="记忆块 id")
+
+    p_prune = sub.add_parser("prune", help="归档强度过低的弱记忆块(不删除)")
+    p_prune.add_argument("--threshold", type=float, default=0.2, help="强度阈值 (默认 0.2)")
+    p_prune.add_argument("--archive", default="data/archive.json", help="归档文件路径")
 
     p_graph = sub.add_parser("graph", help="将记忆块渲染为 SVG")
     p_graph.add_argument("output", nargs="?", default="graph.svg")
@@ -63,7 +70,7 @@ def main(argv: list[str] | None = None) -> int:
             )
         else:
             print(f"吸收进已有块 {block.id} (片段已淡出, 只留溯源): {block.content}")
-        print(f"  关键词: {', '.join(block.keywords) or '(无)'}  记忆块总数: {len(system.blocks)}")
+        print(f"  关键词: {', '.join(block.keywords) or '(自动提取为空)'}  记忆块总数: {len(system.blocks)}")
         if block.chain and len(block.chain) >= 3:
             print(f"  融会贯通通路: {' → '.join(block.chain)}")
     elif args.command == "list":
@@ -71,21 +78,37 @@ def main(argv: list[str] | None = None) -> int:
             print("(空)")
         for b in system.blocks:
             first = b.content.split("\n", 1)[0]
-            print(f"[块] {b.id}  关键词={b.keywords}  片段数={len(b.sources)}")
+            print(
+                f"[块] {b.id}  强度={b.effective_strength():.2f}  "
+                f"关键词={b.keywords}  片段数={len(b.sources)}"
+            )
             print(f"  {first}")
+    elif args.command == "stats":
+        s = system.stats()
+        print(f"记忆块总数 : {s['blocks']}")
+        print(f"片段总数   : {s['fragments']}  (平均每块 {s['avg_sources_per_block']} 条)")
+        print(f"关键词总数 : {s['total_keywords']}")
+        print(f"融会贯通通路数: {s['chains']}")
+        print("-> 块总数远小于片段总数, 说明吸收式融合在生效")
     elif args.command == "query":
         results = system.query(args.tokens)
         if not results:
             print("无命中")
         for r in results:
-            print(f"[命中] {r['id']}  关键词={r['keywords']}  片段数={r['n_sources']}")
+            print(
+                f"[命中] {r['id']}  强度={r['strength']}  "
+                f"关键词={r['keywords']}  片段数={r['n_sources']}"
+            )
             print(f"  {r['preview']}  (get {r['id']} 查看整体描述)")
+            for rel in r["related"]:
+                print(f"  关联块 {rel['id']}  关键词={rel['keywords']}: {rel['preview']}")
     elif args.command == "get":
         block = system.get(args.block_id)
         if block is None:
             print(f"未找到记忆块: {args.block_id}")
             return 1
-        print(f"记忆块 {block.id}  关键词: {', '.join(block.keywords) or '(无)'}")
+        print(f"记忆块 {block.id}  强度={block.effective_strength():.2f}  "
+              f"关键词: {', '.join(block.keywords) or '(无)'}")
         print("---- 整体描述 ----")
         print(block.content)
         if block.chain and len(block.chain) >= 3:
@@ -94,6 +117,13 @@ def main(argv: list[str] | None = None) -> int:
         for s in block.sources:
             print(f"  [{s.id}] 强度={s.effective_strength():.2f}  关键词={s.keywords}")
             print(f"      {s.content}")
+    elif args.command == "prune":
+        weak = system.prune(threshold=args.threshold, archive_path=args.archive)
+        if not weak:
+            print("没有需要归档的弱块")
+        for b in weak:
+            print(f"已归档 {b.id} (强度 {b.effective_strength():.3f} < {args.threshold})")
+        print(f"活跃块: {len(system.blocks)}")
     elif args.command == "graph":
         svg = render_blocks(system.blocks, title="Ti-memory 记忆块")
         with open(args.output, "w", encoding="utf-8") as f:

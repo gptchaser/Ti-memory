@@ -43,5 +43,6 @@ def preview(b: MemoryBlock) -> dict:
         "keywords": b.keywords,
         "preview": _preview(b.content),
         "n_sources": len(b.sources),
+        "strength": round(b.effective_strength(), 2),
         "updated_at": b.updated_at,
     }

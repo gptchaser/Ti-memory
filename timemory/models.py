@@ -102,7 +102,21 @@ class MemoryBlock:
 
     @property
     def chain(self) -> Optional[list[str]]:
-        """由 links 识别的通路(如 [A, B, C]); 不是通路则返回 None."""
+        """由 links 识别的通路(如 [A, B, C]); 不是通路则返回 None.
+
+        融会贯通需要至少两条片段参与, 单条片段的自身顺序不算通路。
+        """
         from .linking import chain_path
 
+        if len(self.sources) < 2:
+            return None
         return chain_path(self.keywords, self.links)
+
+    def effective_strength(self, half_life_days: float = 30.0) -> float:
+        """当前有效强度(考虑时间衰减): 每经过一个半衰期减半.
+
+        记忆遗忘模型: 长时间不被检索的块会逐渐变弱,
+        检索/进入会加强(use it or lose it)。
+        """
+        age_days = max(0.0, (time.time() - self.updated_at) / 86400.0)
+        return self.strength * (0.5 ** (age_days / half_life_days))

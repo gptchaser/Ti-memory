@@ -8,6 +8,7 @@ import unittest
 from pathlib import Path
 
 from timemory import MemorySystem
+from timemory.extract import extract_keywords
 from timemory.linking import chain_path, match_blocks
 from timemory.models import MemoryBlock, Source, normalize_keywords
 from timemory.synthesis import absorb, create_block, rule_based_render
@@ -141,6 +142,92 @@ class TestSystem(unittest.TestCase):
         block = reloaded.blocks[0]
         self.assertEqual(sorted(block.keywords), ["A", "B", "C"])
         self.assertEqual(len(block.sources), 2)
+
+    def test_auto_keywords_when_none_given(self):
+        r = self.sys.add("Every morning I ride my bike from home to the office.")
+        self.assertTrue(r.created)
+        self.assertIn("home", r.block.keywords)
+        self.assertIn("office", r.block.keywords)
+
+    def test_subset_keywords_absorb_into_best_block_not_merge(self):
+        self.sys.add("A 到 B", ["A", "B"])
+        self.sys.add("C 到 B", ["C", "B"])
+        b1 = self.sys.blocks[0]
+        b2 = create_block("X 到 B 的路", ["X", "B"])
+        self.sys._blocks.append(b2)
+        b1.strength = 0.9
+        b2.strength = 0.4
+        self.sys._save()
+        # 新片段关键词 {B} 被两个块都覆盖 -> 只吸收进最强块 b1, 不合并
+        r = self.sys.add("一次关于 B 的记忆", ["B"])
+        self.assertEqual(len(self.sys.blocks), 2)
+        self.assertEqual(r.merged_blocks, [])
+        self.assertEqual(r.block.id, b1.id)
+        self.assertEqual(len(b1.sources), 3)
+        self.assertEqual(len(b2.sources), 1)  # b2 未被波及
+
+    def test_stats_counts(self):
+        self.sys.add("A 到 B", ["A", "B"])
+        self.sys.add("C 到 B", ["C", "B"])
+        self.sys.add("C 到 D", ["C", "D"])
+        s = self.sys.stats()
+        self.assertEqual(s["blocks"], 1)
+        self.assertEqual(s["fragments"], 3)
+        self.assertEqual(s["chains"], 1)
+
+
+class TestForgetting(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.store = str(Path(self.tmp.name) / "mem.json")
+        self.sys = MemorySystem(self.store)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_block_strength_decays_with_time(self):
+        self.sys.add("旧记忆", ["A"])
+        block = self.sys.blocks[0]
+        block.updated_at = time.time() - 30 * 86400
+        self.assertAlmostEqual(block.effective_strength(), 0.5, places=2)
+
+    def test_get_reinforces_strength(self):
+        self.sys.add("记忆", ["A"])
+        block = self.sys.blocks[0]
+        block.strength = 0.5
+        self.sys._save()
+        before = self.sys.get(block.id)
+        self.assertGreater(before.effective_strength(), 0.5)
+
+    def test_prune_archives_weak_blocks(self):
+        self.sys.add("新鲜记忆", ["A"])
+        old = self.sys.add("旧记忆", ["B"]).block
+        old.updated_at = time.time() - 200 * 86400
+        self.sys._save()
+        archive_path = str(Path(self.tmp.name) / "archive.json")
+        weak = self.sys.prune(threshold=0.2, archive_path=archive_path)
+        self.assertEqual(len(weak), 1)
+        self.assertEqual(len(self.sys.blocks), 1)
+        self.assertTrue(Path(archive_path).exists())
+        archived = MemorySystem(archive_path)
+        self.assertEqual(len(archived.blocks), 1)
+        self.assertEqual(archived.blocks[0].id, old.id)
+
+
+class TestExtract(unittest.TestCase):
+    def test_rule_extract_english(self):
+        kws = extract_keywords("Every morning I ride my bike from home to the office.")
+        self.assertIn("office", kws)
+        self.assertIn("home", kws)
+        self.assertNotIn("the", kws)
+
+    def test_rule_extract_filters_stopwords(self):
+        kws = extract_keywords("the and for are but you", top_n=3)
+        self.assertEqual(kws, [])
+
+    def test_rule_extract_cjk(self):
+        kws = extract_keywords("我在公园散步, 公园里有很多树和花。", top_n=5)
+        self.assertIn("公园", kws)
 
 
 if __name__ == "__main__":

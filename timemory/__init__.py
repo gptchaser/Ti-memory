@@ -9,9 +9,18 @@
 - 桥接多个块的记忆会把它们合并成更大的块——这就是"融会贯通"。
 """
 
+from .extract import extract_keywords
 from .models import MemoryBlock, Source
 from .store import JsonStore
 from .system import AddResult, MemorySystem
 
-__version__ = "0.2.0"
-__all__ = ["MemoryBlock", "Source", "JsonStore", "MemorySystem", "AddResult", "__version__"]
+__version__ = "0.3.0"
+__all__ = [
+    "MemoryBlock",
+    "Source",
+    "JsonStore",
+    "MemorySystem",
+    "AddResult",
+    "extract_keywords",
+    "__version__",
+]
